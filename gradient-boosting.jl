@@ -1,4 +1,4 @@
-using Printf, Statistics
+using Printf, Statistics,Zygote,LinearAlgebra, Statistics, Compat
 
 struct Dataset
     X::Array
@@ -140,7 +140,7 @@ end
 function predict(bt::GradientBoostedTree, x)
     return predict(x,bt.models[1:bt.best_iteration])
 end
-function predict(x, models::Array{Tree})
+function predict(x::Array, models::Array{Tree})
     if len(models)!=0
         return sum([predict(x,m) for m in models])
     else
@@ -179,7 +179,36 @@ function calc_l2_loss(models, data_set)
     for i in 1:len(data_set.X)
         errors[i]=(data_set.y[i]-predict(data_set.X[i,:], models))
     end
-    return mean(errors.^2)
+    return sum(errors.^2)
+end
+
+function l2_loss(y, ypred)
+    return sum((y.-ypred).^2)
+end
+
+function predict(dataset::Dataset, models::Array{Tree})
+    X = dataset.X
+    scores = zeros(len(X))
+    if len(models) == 0
+        return  scores
+    end
+    for i in 1:len(X)
+        scores[i] = predict(X[i,:], models)
+    end
+return scores
+end
+
+function calc_loss(y, ypred,f::Function)
+    return f(y, ypred)
+end
+δ(y,ypred,f) = Zygote.gradient(y->calc_loss(y,ypred,f),y)
+δ2(y,ypred,f) = diag(Zygote.hessian(y->calc_loss(y,ypred,f),y))
+
+function calc_gradient(models, data_set,f::Function)
+    ypred=predict(data_set,models)
+    grads = δ(data_set.y,ypred,f)
+    hess = δ2(data_set.y,ypred,f)
+    return  grads,hess
 end
 
 function calc_loss(models, data_set)
