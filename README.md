@@ -1,6 +1,6 @@
 # gradient-boosting
 
-Simple gradient boosting tree implementation.
+Simple gradient boosting tree implementation in julia.
 
 References
 
