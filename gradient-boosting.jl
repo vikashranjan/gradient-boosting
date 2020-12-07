@@ -182,8 +182,14 @@ function calc_l2_loss(models, data_set)
     return sum(errors.^2)
 end
 
+#loss function
 function l2_loss(y, ypred)
     return sum((y.-ypred).^2)
+end
+
+#loss function
+function cross_entropy_loss(Y,Ypred,ϵ=2.220446049250313e-16)
+    return -sum(Y.*log.(Ypred.+ϵ))
 end
 
 function predict(dataset::Dataset, models::Array{Tree})
@@ -204,9 +210,8 @@ end
 δ(y,ypred,f) = Zygote.gradient(y->calc_loss(y,ypred,f),y)
 δ2(y,ypred,f) = diag(Zygote.hessian(y->calc_loss(y,ypred,f),y))
 
-function calc_gradient(models, data_set,f::Function)
-    ypred=predict(data_set,models)
-    grads = δ(data_set.y,ypred,f)
+function calc_gradient(data_set, ypred ,f::Function)
+    grads = δ(data_set.y,ypred,f)[1]
     hess = δ2(data_set.y,ypred,f)
     return  grads,hess
 end
@@ -221,7 +226,7 @@ function build_gbt(bt::GradientBoostedTree,train_set, grad, hessian, shrinkage_r
     return learner
 end
 
-function train!(bt::GradientBoostedTree, params::Dict, train_set::Dataset, num_boost_round::Int, valid_set::Dataset, early_stopping_rounds::Int)
+function train!(bt::GradientBoostedTree, params::Dict, train_set::Dataset, num_boost_round::Int, valid_set::Dataset, early_stopping_rounds::Int,loss_function::Function)
     bt.params = params
     models = Tree[]
     shrinkage_rate = 1.
@@ -233,7 +238,8 @@ function train!(bt::GradientBoostedTree, params::Dict, train_set::Dataset, num_b
 for iter_cnt in 1:num_boost_round
     iter_start_time = time()
     scores = training_data_scores(train_set, models)
-    grad, hessian = calc_gradient(train_set, scores)
+    grad, hessian = calc_gradient(train_set, scores,loss_function)
+
     learner = build_gbt(bt,train_set, grad, hessian, shrinkage_rate)
 
     if iter_cnt > 0
