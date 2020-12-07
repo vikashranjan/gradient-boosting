@@ -10,6 +10,5 @@ References
     
 # TODO
 
-    [1] Use Zygote for gradient.
-    [2] Support Classification.
-    [3] Gradient Sampling.
+    [1] Support Classification.
+    [2] Gradient Sampling.
