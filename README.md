@@ -1,6 +1,6 @@
 # gradient-boosting
 
-Simple gradient boosting tree implementation in julia.
+Simple gradient boosting tree implementation in julia.Zygote is used for gradient calculation.
 
 References
 
