@@ -161,26 +161,6 @@ function training_data_scores(train_set::Dataset, models::Array)
 return scores
 end
 
-function calc_l2_gradient(train_set, scores)
-    labels = train_set.y
-    hessian = ones(len(labels))*.2
-    
-    grad = [2 * (labels[i] - scores[i]) for i in 1:len(labels)]
-return grad, hessian
-end
-
-function calc_gradient(train_set, scores)
-    return calc_l2_gradient(train_set, scores)
-end
-
-function calc_l2_loss(models, data_set)
-    N=len(data_set.X)
-    errors=zeros(N)
-    for i in 1:len(data_set.X)
-        errors[i]=(data_set.y[i]-predict(data_set.X[i,:], models))
-    end
-    return sum(errors.^2)
-end
 
 #loss function
 function l2_loss(y, ypred)
@@ -203,6 +183,10 @@ function predict(dataset::Dataset, models::Array{Tree})
     end
 return scores
 end
+function calc_loss(dataset::Dataset, models::Array{Tree},f::Function)
+    ypred=predict(dataset,models)
+    return f(dataset.y, ypred)
+end
 
 function calc_loss(y, ypred,f::Function)
     return f(y, ypred)
@@ -214,10 +198,6 @@ function calc_gradient(data_set, ypred ,f::Function)
     grads = δ(data_set.y,ypred,f)[1]
     hess = δ2(data_set.y,ypred,f)
     return  grads,hess
-end
-
-function calc_loss(models, data_set)
-    return calc_l2_loss(models, data_set)
 end
 
 function build_gbt(bt::GradientBoostedTree,train_set, grad, hessian, shrinkage_rate)
@@ -247,10 +227,10 @@ for iter_cnt in 1:num_boost_round
     end
     push!(models,learner)
 
-    train_loss =calc_loss(models, train_set)
-    val_loss = calc_loss(models, valid_set) 
+    train_loss =calc_loss(train_set,models,loss_function)
+    val_loss = calc_loss(valid_set,models ,loss_function) 
  
-    @printf("Iter %i, Train's L2: %f, Valid's L2: %f, Elapsed: %f secs \n",iter_cnt, train_loss, val_loss, time() - iter_start_time)
+    @printf("Iter %i, Train's Loss: %f, Valid's Loss: %f, Elapsed: %f secs \n",iter_cnt, train_loss, val_loss, time() - iter_start_time)
 
     if val_loss < best_val_loss
         best_val_loss = val_loss
@@ -258,7 +238,7 @@ for iter_cnt in 1:num_boost_round
     end
     if iter_cnt - best_iteration >= early_stopping_rounds
         print("Early stopping, best iteration is: \n")
-        @printf("Iter %f, Train's L2: %f",best_iteration, best_val_loss)
+        @printf("Iter %f, Train's Loss: %f",best_iteration, best_val_loss)
         break
     end
 end
